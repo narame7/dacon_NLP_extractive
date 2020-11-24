@@ -1,0 +1,115 @@
+from utils import *
+from config import *
+from model import *
+import numpy as np
+
+
+
+train_path="./data/train.jsonl"
+test_path="/home/sol/python/pycharm/NLP_extractive/test.jsonl"
+
+
+load_new_data=False
+
+def load_new():
+    train=load_json_asDataFrame(train_path)
+    test=load_json_asDataFrame(train_path)
+    return train,test
+
+def data_processing(train):
+    x_media=train['media'].copy()
+    x_id=train['id'].copy()
+    x_article=train['article_original'].copy()
+
+    y=train['extractive'].copy()
+    return x_id,x_media,x_article,y
+
+class Trainer(object):
+    def __init__(self):
+
+        self.n_epoch = n_epoch
+        self.batch_size = batch_size
+        self.lr = lr
+        self.reduce_factor = reduce_factor
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+
+        self.model = None
+
+
+    def train(self):
+        if(load_new_data):
+            low_train,low_test=load_new()
+        else:
+            low_train=pd.read_csv("./data/train.csv")
+            low_test=pd.read_csv("./data/test.csv")
+
+        x_media,x_id,x_article,y=data_processing(low_train)
+        print(type(x_media))
+        print(type(x_id))
+        print(type(x_article))
+        x_article=x_article.to_numpy()
+        y=y.to_numpy()
+        print(type(y))
+
+        torch.Tensor(x_article)
+        dataset=torch.utils.data.TensorDataset(x_article, y)
+        dataloader=train_dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+
+
+        criterion = nn.CrossEntropyLoss().to(self.device)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.01)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=self.patience,factor=self.reduce_factor)
+
+
+
+        for i_epoch in range(n_epoch):
+            self.model.train()
+            losses = 0
+            size = 0
+            train_diff = 0
+            traan_total = 0
+
+            for _, (x_mb, y_mb) in enumerate(train_dataloader):
+                x_mb = x_mb.to(self.device)
+                y_mb = y_mb.to(self.device)
+
+                self.model.zero_grad()
+                optimizer.zero_grad()
+                y_mb = y_mb.squeeze(2)
+
+                y_hat_mb = self.model(x_mb)
+                loss = criterion(y_hat_mb, y_mb)
+                loss.backward()
+
+                optimizer.step()
+                losses += loss.item()
+                size += 1
+                train_diff += self.get_MAPE(y_mb, y_hat_mb)
+
+                traan_total += len(y_mb) * self.seq_len
+
+            scheduler.step(loss)
+            train_score = (train_diff / traan_total) * 100
+
+            loss_avg = losses / size
+            lr = self.get_lr(optimizer)
+
+            print(f'epoch: {i_epoch} \tvalLoss: {val_loss}\t MAPE: {score}  \tlr: {lr}')
+            print(f'epoch: {i_epoch} \tTrainLoss: {loss_avg}\t MAPE: {train_score} \tlr: {lr} ', end="\n\n")
+
+            # save model
+            # filename = 'model_' + str(i_epoch) + '.pth'
+            # torch.save(self.model, './saves/' + filename)
+        print("??")
+
+
+
+
+
+if __name__ == "__main__":
+    trainer = Trainer()
+    trainer.train()
+    print("training done")
