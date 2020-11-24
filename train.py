@@ -22,7 +22,8 @@ def data_processing(train):
     x_article=train['article_original'].copy()
 
     y=train['extractive'].copy()
-    return x_id,x_media,x_article,y
+    x = train.copy().drop(['extractive'],axis='columns', inplace=True)
+    return x_id,x_media,x_article,y,x
 
 class Trainer(object):
     def __init__(self):
@@ -46,7 +47,7 @@ class Trainer(object):
             low_train=pd.read_csv("./data/train.csv")
             low_test=pd.read_csv("./data/test.csv")
 
-        x_media,x_id,x_article,y=data_processing(low_train)
+        x_media,x_id,x_article,y,x=data_processing(low_train)
         print(type(x_media))
         print(type(x_id))
         print(type(x_article))
@@ -54,8 +55,11 @@ class Trainer(object):
         y=y.to_numpy()
         print(type(y))
 
-        torch.Tensor(x_article)
-        dataset=torch.utils.data.TensorDataset(x_article, y)
+        _, enc, ordcol, max_value, categories_size = encoding(x, None, None, None)
+        train_x, _, _, _, _ = encoding(x, enc, ordcol, max_value)
+
+        train_x=torch.Tensor(train_x)
+        dataset=torch.utils.data.TensorDataset(train_x, y)
         dataloader=train_dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
 
@@ -97,7 +101,6 @@ class Trainer(object):
             loss_avg = losses / size
             lr = self.get_lr(optimizer)
 
-            print(f'epoch: {i_epoch} \tvalLoss: {val_loss}\t MAPE: {score}  \tlr: {lr}')
             print(f'epoch: {i_epoch} \tTrainLoss: {loss_avg}\t MAPE: {train_score} \tlr: {lr} ', end="\n\n")
 
             # save model
