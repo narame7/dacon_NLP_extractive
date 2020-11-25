@@ -9,9 +9,11 @@ class Net(nn.Module):
 
     def __init__(self):
         super(Net, self).__init__()
+        self.hidden_dim =300
 
-        self.rnn1 =nn.LSTM(150, self.hidden_dim,num_layers=2, bidirectional=True, batch_first=True)
-        self.rnn2 = nn.LSTM(150, self.hidden_dim,num_layers=2, bidirectional=True, batch_first=True)
+        self.rnn1 =nn.LSTM(1050, self.hidden_dim,num_layers=2, bidirectional=True, batch_first=True)
+        self.rnn2 = nn.LSTM(self.hidden_dim, self.hidden_dim,num_layers=2, bidirectional=True, batch_first=True)
+
         self.fc1 = nn.Linear(30 * 2 * 2, 256)
 
         self.fc2 = nn.Linear(256, 3)

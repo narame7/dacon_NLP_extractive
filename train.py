@@ -4,6 +4,7 @@ from model import *
 from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
 from gluonnlp.data import SentencepieceTokenizer
 from kogpt2.utils import get_tokenizer
+import re
 
 import numpy as np
 
@@ -13,12 +14,31 @@ train_path="./data/train.jsonl"
 test_path="./data/test.jsonl"
 
 
+
 load_new_data=False
+laod_new_encode=False
 
 def load_new():
     train=load_json_asDataFrame(train_path)
     test=load_json_asDataFrame(train_path)
-    return train,test
+    train.to_csv("./data/train.csv", mode='w')
+    test.to_csv("./data/test.csv", mode='w')
+
+def target_init(y):
+    #########first init######
+    parse=re.sub('[,]', '', y[1][1:-1]).split()
+    out= np.array((1,list(map(int, parse))))
+    #########################
+
+    for i in y:
+
+        parse = re.sub('[,]', '', i[1:-1]).split()
+        parse = list(map(int, parse))
+        parse=np.array((1, parse))
+        out = np.append(out,parse,axis=0)
+        print(parse)
+
+    return out
 
 def Tokenizer(item):
     item=list(np.array(item.tolist()))
@@ -51,6 +71,10 @@ def Tokenizer(item):
         print(out.shape)
 
 
+    x_np = out.numpy()
+    x_df = pd.DataFrame(x_np)
+    x_df.to_csv('./data/encoded.csv', mode='w')
+
 def data_processing(train):
     x_media=train['media'].copy()
     x_id=train['id'].copy()
@@ -78,26 +102,27 @@ class Trainer(object):
 
     def train(self):
         if(load_new_data):
-            low_train,low_test=load_new()
-        else:
-            low_train=pd.read_csv("./data/train.csv")
-            low_test=pd.read_csv("./data/test.csv")
+            load_new()
+
+        low_train=pd.read_csv("./data/train.csv")
+        low_test=pd.read_csv("./data/test.csv")
 
         x_media,x_id,x_article,y,x=data_processing(low_train)
-        print(type(x_media))
-        print(type(x_id))
-        print(type(x_article))
         x_article=x_article.to_numpy()
-        print(x_article[777])
-        y=y.to_numpy()
-        print(type(y))
-        Tokenizer(x_article)
-        #
-        # _, enc, ordcol, max_value, categories_size = encoding(x, None, None, None)
-        # train_x, _, _, _, _ = encoding(x, enc, ordcol, max_value)
+        y=target_init(y)
+        y=torch.tensor(y)
 
-        train_x=torch.Tensor(train_x)
-        dataset=torch.utils.data.TensorDataset(train_x, y)
+
+        if(laod_new_encode):
+            Tokenizer(x_article)
+
+        x_article = pd.read_csv("./data/encoded.csv")
+        x_article=torch.tensor(x_article.to_numpy())
+        print(x_article.shape)
+        print(y.shape)
+        dataset=torch.utils.data.TensorDataset(x_article, y)
+
+
         dataloader=train_dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
 
