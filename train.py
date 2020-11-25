@@ -1,12 +1,16 @@
 from utils import *
 from config import *
 from model import *
+from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
+from gluonnlp.data import SentencepieceTokenizer
+from kogpt2.utils import get_tokenizer
+
 import numpy as np
 
 
 
 train_path="./data/train.jsonl"
-test_path="/home/sol/python/pycharm/NLP_extractive/test.jsonl"
+test_path="./data/test.jsonl"
 
 
 load_new_data=False
@@ -16,6 +20,37 @@ def load_new():
     test=load_json_asDataFrame(train_path)
     return train,test
 
+def Tokenizer(item):
+    item=list(np.array(item.tolist()))
+    max=0
+    tok_path = get_tokenizer()
+    model, vocab = get_pytorch_kogpt2_model()
+    tok = SentencepieceTokenizer(tok_path, num_best=0, alpha=0)
+
+    print(item[6])
+
+    ################################init first tensor##################################
+
+    toked = tok(item[0])
+    input_ids = torch.tensor([vocab[vocab.bos_token], ] + vocab[toked]).unsqueeze(0)
+    size = input_ids.shape
+    out=torch.cat([input_ids, torch.empty(1, max_seqlen-size[1])], axis=1)
+
+    ###################################################################################
+
+    for i in item:
+
+        toked = tok(i)
+        input_ids = torch.tensor([vocab[vocab.bos_token], ] + vocab[toked]).unsqueeze(0)
+        size=input_ids.shape
+        # print(input_ids)
+        # print(input_ids.shape)
+        y=torch.cat([input_ids, torch.empty(1, max_seqlen-size[1])], axis=1)
+        out=torch.cat([out,y],axis=0)
+
+        print(out.shape)
+
+
 def data_processing(train):
     x_media=train['media'].copy()
     x_id=train['id'].copy()
@@ -23,6 +58,7 @@ def data_processing(train):
 
     y=train['extractive'].copy()
     x = train.copy().drop(['extractive'],axis='columns', inplace=True)
+
     return x_id,x_media,x_article,y,x
 
 class Trainer(object):
@@ -52,11 +88,13 @@ class Trainer(object):
         print(type(x_id))
         print(type(x_article))
         x_article=x_article.to_numpy()
+        print(x_article[777])
         y=y.to_numpy()
         print(type(y))
-
-        _, enc, ordcol, max_value, categories_size = encoding(x, None, None, None)
-        train_x, _, _, _, _ = encoding(x, enc, ordcol, max_value)
+        Tokenizer(x_article)
+        #
+        # _, enc, ordcol, max_value, categories_size = encoding(x, None, None, None)
+        # train_x, _, _, _, _ = encoding(x, enc, ordcol, max_value)
 
         train_x=torch.Tensor(train_x)
         dataset=torch.utils.data.TensorDataset(train_x, y)
@@ -107,9 +145,6 @@ class Trainer(object):
             # filename = 'model_' + str(i_epoch) + '.pth'
             # torch.save(self.model, './saves/' + filename)
         print("??")
-
-
-
 
 
 if __name__ == "__main__":
