@@ -27,16 +27,18 @@ def load_new():
 def target_init(y):
     #########first init######
     parse=re.sub('[,]', '', y[1][1:-1]).split()
-    out= np.array((1,list(map(int, parse))))
+    print(parse)
+    out= np.array((list(map(int, parse)))).reshape(1,3)
     #########################
 
     for i in y:
 
         parse = re.sub('[,]', '', i[1:-1]).split()
         parse = list(map(int, parse))
-        parse=np.array((1, parse))
+        print(i)
+        parse=np.array((parse)).reshape(1,3)
         out = np.append(out,parse,axis=0)
-        print(parse)
+
 
     return out
 
