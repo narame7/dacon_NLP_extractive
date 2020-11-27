@@ -1,6 +1,8 @@
 from utils import *
 from config import *
 from model import *
+from TF_IDF import TF
+
 from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
 from gluonnlp.data import SentencepieceTokenizer
 from kogpt2.utils import get_tokenizer
@@ -12,7 +14,7 @@ import numpy as np
 
 train_path="./data/train.jsonl"
 test_path="./data/test.jsonl"
-
+out_path="./data/output.csv"
 
 
 load_new_data=False
@@ -25,11 +27,8 @@ def load_new():
     test.to_csv("./data/test.csv", mode='w')
 
 def target_init(y):
-    #########first init######
-    parse=re.sub('[,]', '', y[1][1:-1]).split()
-    print(parse)
-    out= np.array((list(map(int, parse)))).reshape(1,3)
-    #########################
+
+    out= []
 
     for i in y:
 
@@ -41,6 +40,15 @@ def target_init(y):
 
 
     return out
+def testTF(target):
+    TFS = TF()
+    list_origin = TFS.getlist(test_path)
+
+    out=pd.read_csv(out_path)
+
+    out['summary']=list_origin
+
+    out.to_csv("./data/out.csv", mode='w')
 
 def Tokenizer(item):
     item=list(np.array(item.tolist()))
@@ -49,16 +57,8 @@ def Tokenizer(item):
     model, vocab = get_pytorch_kogpt2_model()
     tok = SentencepieceTokenizer(tok_path, num_best=0, alpha=0)
 
-    print(item[6])
+    out=[]
 
-    ################################init first tensor##################################
-
-    toked = tok(item[0])
-    input_ids = torch.tensor([vocab[vocab.bos_token], ] + vocab[toked]).unsqueeze(0)
-    size = input_ids.shape
-    out=torch.cat([input_ids, torch.empty(1, max_seqlen-size[1])], axis=1)
-
-    ###################################################################################
 
     for i in item:
 
@@ -110,6 +110,8 @@ class Trainer(object):
         low_test=pd.read_csv("./data/test.csv")
 
         x_media,x_id,x_article,y,x=data_processing(low_train)
+        testTF(train_path)
+
         x_article=x_article.to_numpy()
         y=target_init(y)
         y=torch.tensor(y)
